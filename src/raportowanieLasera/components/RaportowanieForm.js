@@ -3,6 +3,7 @@ import { Form, Input, Button, Table, Container, Radio, Header, Confirm, Icon, Se
 import { toast } from 'react-toastify'
 import classNames from 'classnames/bind'
 import { FormattedMessage } from 'react-intl'
+import preval from 'preval.macro'
 import logo from '../../bar-code.png';
 import './RaportowanieForm.css'
 import RaportujZlecenie from '../modules/RaportujZlecenie'
@@ -10,6 +11,7 @@ import DataProvider from '../modules/DataProvider'
 import InformacjeZSerwera from './InformacjeZSerwera'
 import { afterSecondsOf, countDownSecondsOnTickOnComplete } from '../modules/Timers'
 import ConfirmButton from './ConfirmButton'
+import { Tlumaczenia } from '../../tools/Tlumaczenia'
 //import InnerState from '../../tools/InnerState'
 
 class RaportowanieForm extends Component {
@@ -87,8 +89,6 @@ class RaportowanieForm extends Component {
                     this.focusPoleTekstoweSkanowania();
                 }
             }, error => {
-                toast.error(<span>Błąd: {error.error_message}</span>);
-                if (error.errorCause) toast.error(<span>Błąd: {error.errorCause}</span>);
                 this.setState({ isLoading: false })
             })
     }
@@ -118,42 +118,47 @@ class RaportowanieForm extends Component {
                 this.setState({ raportujLaser: Object.assign(this.state.raportujLaser, fromServer), isLoading: false });
                 this.wyswietlLicznikIOdswiezStroneZa(30);
             }, error => {
-                toast.error(<span>Błąd: {error}</span>);
+                this.wyswietlKomunikatBledu(error)
                 this.setState({ isLoading: false });
             })
     }
 
-    handlePrzerwijPrace = (idOperacji) => {
+    handlePrzerwijPrace = (idOperacji, confirmation_number) => {
         this.rozpocznijLaczenieZSerwerem();
         this.focusPoleTekstoweSkanowania();
 
-        this.state.raportujZlecenie.wyslijNaSerwer({ idOperacji: idOperacji, scanInput: 'PRZERWIJ' },
+        this.state.raportujZlecenie.wyslijNaSerwer({ idOperacji: idOperacji, confirmation_number: confirmation_number, scanInput: 'PRZERWIJ' },
             fromServer => {
                 this.setState({ raportujZlecenie: Object.assign(this.state.raportujZlecenie, fromServer), isLoading: false });
                 this.wyswietlLicznikIOdswiezStroneZa(30);
             }, error => {
-                toast.error(<span>Błąd: {error}</span>);
+                this.wyswietlKomunikatBledu(error)
                 this.setState({ isLoading: false });
             })
     }
 
-    handleZakonczPrace = (idOperacji) => {
+    handleZakonczPrace = (idOperacji, confirmation_number) => {
         this.rozpocznijLaczenieZSerwerem();
         this.focusPoleTekstoweSkanowania();
 
-        this.state.raportujZlecenie.wyslijNaSerwer({ idOperacji: idOperacji, scanInput: 'ZAKONCZ' },
+        this.state.raportujZlecenie.wyslijNaSerwer({ idOperacji: idOperacji, confirmation_number: confirmation_number, scanInput: 'ZAKONCZ' },
             fromServer => {
                 this.setState({ raportujZlecenie: Object.assign(this.state.raportujZlecenie, fromServer), isLoading: false });
                 this.wyswietlLicznikIOdswiezStroneZa(30);
             }, error => {
-                const { error_message, errorCause } = error
-                if(error_message) {
-                    toast.error(<span>Błąd: {error_message}</span>);
-                } else {
-                    toast.error(<span>Błąd: {error}</span>);
-                }
+                this.wyswietlKomunikatBledu(error)
                 this.setState({ isLoading: false });
             })
+    }
+
+    wyswietlKomunikatBledu = error => {
+        const { error_message, errorCause } = error
+        const komunikatBledu = error_message || errorCause || ''
+        if (typeof komunikatBledu === 'object') {
+            komunikatBledu = 'server_error'
+        }      
+
+        toast.error(<span>Błąd: {komunikatBledu}</span>);
     }
 
     handleAnuluj = () => {
@@ -214,7 +219,9 @@ class RaportowanieForm extends Component {
         return (
             <Container textAlign='center'>
                 <Form autoComplete="off" loading={this.state.isLoading}>
-                    <Header as='h2'><FormattedMessage id="Raportowanie czasu pracy zlecenia" defaultMessage="Raportowanie produkcji w oparciu o confirmation number" /></Header>
+                    <Header as='h2' id={preval`module.exports = new Date().toLocaleString();`}>
+                        <Tlumaczenia id="Raportowanie produkcji w oparciu o confirmation number" />
+                    </Header>
                     <Segment.Group>
                         <Segment compact>
                             <div style={{ display: 'flex' }}>
@@ -419,6 +426,10 @@ const AkcjeTestowe = (props) => {
                 <Icon name='external' />
                 Łukasz Silwanowicz
                             </Button>
+            <Button icon onClick={(evt) => { parent.setScan(28700488); parent.handleScan() }} type='button'>
+                <Icon name='external' />
+                Tomasz Tarka
+                            </Button>
                 {/* <div>
                             { Object.keys(zlecenie)
                 .filter(key => typeof (zlecenie[key]) !== 'function')
@@ -473,14 +484,14 @@ const TrwajacePrace = (props) => {
                             {praca.start_datetime}
                         </Table.Cell>
                         <Table.Cell>
-                            <ConfirmButton onClick={(evt) => handlePrzerwijPrace(praca.prodOperSchedule.id)}
+                            <ConfirmButton onClick={(evt) => handlePrzerwijPrace(praca.prodOperSchedule.id, praca.prodOperSchedule.confirmation_number)}
                                 content={<FormattedMessage id="Przerwij pracę" defaultMessage="Przerwij pracę" />}
                                 useConfirm={praca.czyProgramNiedawnoRozpoczety == true}
                                 confirmContent="Program został niedawno rozpoczęty. Czy na pewno chcesz go przerwać?"
                                 cancelButton='Anuluj' //{<FormattedMessage id="Anuluj" defaultMessage="Anuluj" />}
                                 confirmButton='Przerwij pracę' //{<FormattedMessage id="Przerwij pracę" defaultMessage="Przerwij pracę" />}
                             />
-                            <Button type='button' icon onClick={(evt) => handleZakonczPrace(praca.prodOperSchedule.id)}
+                            <Button type='button' icon onClick={(evt) => handleZakonczPrace(praca.prodOperSchedule.id, praca.prodOperSchedule.confirmation_number)}
                                             disabled={praca.trwajaInnePrace}
                                         >
                                             <Icon name='send' />

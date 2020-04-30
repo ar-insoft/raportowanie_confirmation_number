@@ -55,9 +55,14 @@ class RaportujZlecenie {
     }
 
     operacjaOpis = () => {
-        return this.isOperacjaOdczytana() 
-        ? this.productionOperationSchedule.object_index + ' / ' + this.productionOperationSchedule.title 
-        : ''
+        //return this.isOperacjaOdczytana() 
+        //? this.productionOperationSchedule.object_index + ' / ' + this.productionOperationSchedule.title 
+        //: ''
+
+        return this.isOperacjaOdczytana()
+            ? 'Operation ' + this.productionOperationSchedule.pp_operation_structure_position + ' - ' + this.productionOperationSchedule.so_operation_title
+            : ''
+        
     }
 
     wyslijNaSerwer = (additionalFields, promiseHandler, errorHandler) => {
@@ -74,8 +79,12 @@ class RaportujZlecenie {
         doWyslania.idElement = this.productOrComponentSystemObject.id_system_object
         delete doWyslania.productOrComponentSystemObject
 
-        delete doWyslania.zadanieDoWykonania
+        doWyslania.confirmation_number = additionalFields.confirmation_number || this.productionOperationSchedule.confirmation_number
+        console.log('doWyslania.confirmation_number', doWyslania.confirmation_number)
+        doWyslania.idOperacja = this.productionOperationSchedule.id
         delete doWyslania.productionOperationSchedule
+
+        delete doWyslania.zadanieDoWykonania
         delete doWyslania.operacjeElementuGlownego
 
         const doWyslaniaJson = JSON.stringify(doWyslania)

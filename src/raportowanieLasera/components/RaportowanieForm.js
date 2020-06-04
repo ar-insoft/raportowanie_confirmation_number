@@ -89,7 +89,11 @@ class RaportowanieForm extends Component {
                     this.focusPoleTekstoweSkanowania();
                 }
             }, error => {
+                this.wyswietlKomunikatBledu(error)
                 this.setState({ isLoading: false })
+                this.wyswietlLicznikIOdswiezStroneZa(30);
+                this.resetujPoleTekstoweSkanowania();
+                this.focusPoleTekstoweSkanowania();
             })
     }
     // handleScan3 = () => {
@@ -152,13 +156,17 @@ class RaportowanieForm extends Component {
     }
 
     wyswietlKomunikatBledu = error => {
+        toast.error(<span>Błąd: {this.trescKomunikatuBledu(error)}</span>);
+    }
+
+    trescKomunikatuBledu = error => {
+        if (typeof error === 'undefined') return 'server_error'
         const { error_message, errorCause } = error
         const komunikatBledu = error_message || errorCause || ''
         if (typeof komunikatBledu === 'object') {
             komunikatBledu = 'server_error'
-        }      
-
-        toast.error(<span>Błąd: {komunikatBledu}</span>);
+        }
+        return komunikatBledu
     }
 
     handleAnuluj = () => {
